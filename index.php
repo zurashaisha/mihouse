@@ -67,7 +67,7 @@ body {
 }
 
 .widget-wrap {
-    width: 600px;
+    width: 800px;
     padding: 30px;
     border-radius: 20px;
     background: rgba(255, 255, 255, 0.4);
@@ -86,6 +86,7 @@ body {
   border-radius: 20%;
 }
     </style>
+    
 </head>
 <body>
 
@@ -98,33 +99,38 @@ body {
     $name=$conn->query("SELECT name from customer where UID='$_SESSION[UID]'")->fetch_assoc()["name"];
     echo "Hello ".$name;
     ?>
-    <h1><button class="button" onclick="start_game()">Start Game</button></h1>
+    <h1><input type=button class="button" onclick="start_game()" value="Start Game"></input></h1>
     <div id="game_quiz"></div>
 </div>
 <div class="widget-wrap" id="game">
-<div id="question"></div>
-<table border=1>
+<p id="countdownInput" onclick="showRemainingTime()"></p>
+<div id="question" value=""></div>
+<div id="answers">
+<table border=0>
     <tbody width=100%>
         
         <tr>
-            <td question="" name=""><label id="answer_0"></td>
-            <td question="" name=""><label id="answer_1"></td>
-        </tr>
+            <td><input type="radio"  id="answer_0" name="check_answer"></td><td align=left><label for="answer_0" id="panswer_0" name=""></label></td></tr>
         <tr>
-            <td question="" name=""><label id="answer_2"></td>
-            <td question="" name=""><label id="answer_3"></td>
+            <td><input type="radio"  id="answer_1" name="check_answer"></td><td align=left><label for="answer_1" id="panswer_1" name=""></label></td></tr>
+        <tr>
+            <td><input type="radio"  id="answer_2" name="check_answer"></td><td align=left><label for="answer_2" id="panswer_2" name=""></label></td></tr>
+        <tr>
+            <td><input type="radio"  id="answer_3" name="check_answer"></td><td align=left><label for="answer_3" id="panswer_3" name=""></label></td>
         </tr>
     </tbody>
 </table>
-<?php
-$user_questions=$conn->query("SELECT question from customer where UID='$_SESSION[UID]'")->fetch_assoc()["question"];
-$user_questions=explode(".", $user_questions);
-for ($i=1; $i<=count($user_questions); $i++) {
-    echo $i." ";
-}
-?>
+<table border=0>
+    <tbody width=100%>
+        <tr><td align=right><button class=button onclick="set_answer()">შემდეგი კითხვა</button></td><td alight=right><button class=button onclick="skip_answer()">გამოტოვება</button></td></tr>
+</tbody>
+</table>
 </div>
 
+</div>
+<div class="widget-wrap" id="end_game">
+    Game Over
+</div>
 
 
 </section>
@@ -133,8 +139,14 @@ for ($i=1; $i<=count($user_questions); $i++) {
 <script type="text/javascript">
     var game_start = document.getElementById("start_game");
     var game_begin = document.getElementById("game");
+    var game_end = document.getElementById("end_game");
     game_start.style.display = 'block';
     game_begin.style.display = 'none';
+    game_end.style.display = 'none';
+    var countdown = 120;
+    var countdownDuration = countdown;
+    var timer;
+
     function start_game(uid) {
         var uid=<?php echo $_SESSION["UID"]; ?>;
         game_quiz.style.display = 'block';
@@ -149,15 +161,100 @@ for ($i=1; $i<=count($user_questions); $i++) {
                 var question_index=data["question_id"];
                 $('#question').html(question);
                 for (var i=0; i<answers.length; i++) {
-                    $('#answer_'+i).html(answers[i]["answer"]);
-                    $('#answer_'+i).attr("name", answers[i]["index"]);
-                    $('#answer_'+i).attr("question", question_index);
+                    $('#panswer_'+i).html(answers[i]["answer"]);
+                    $('#answer_'+i).val(question_index+"#"+answers[i]["index"]);
 
                 }
+                
             }
         });
         game_start.style.display = 'none';
         game_begin.style.display = 'block';
+        clearInterval(timer);
+        countdownDuration = countdown;
+        startCountdown();
+   
+        
     }
+    function set_answer() {
+        
+        var checked_answer = document.querySelector('input[name="check_answer"]:checked').value;
+        if (!checked_answer) {
+            alert("check one answer");
+        }
+        console.log(checked_answer)
+        var uid=<?php echo $_SESSION["UID"]; ?>;
+        $.ajax({
+            url: 'process.php',
+            type: 'post',
+            data: {request: 'set_answer', answer_data:checked_answer, uid:uid, time:countdownDuration},
+            dataType: 'json',
+            success: function(data) {
+                if (data == "over") {
+                    game_begin.style.display = 'none';
+                    game_end.style.display = 'block';
+                }
+                else {
+                var question=data["question"];
+                var answers=data["answers"];
+                var question_index=data["question_id"];
+                $('#question').html(question);
+                for (var i=0; i<answers.length; i++) {
+                    $('#panswer_'+i).html(answers[i]["answer"]);
+                    $('#answer_'+i).val(question_index+"#"+answers[i]["index"]);
+                }
+                $('input[name=check_answer]').prop('checked',false);
+                
+            }
+            }
+        });
+        clearInterval(timer);
+        countdownDuration = countdown;
+        startCountdown();
+    }
+   function skip_answer() {
+    var uid=<?php echo $_SESSION["UID"]; ?>;
+    $.ajax({
+        url: 'process.php',
+        type: 'post',
+        data: {request: 'skip_answer', user_id:uid, time:countdownDuration},
+        dataType: 'json',
+        success: function(skipdata) {
+            var question=skipdata["question"];
+            var skipanswers=skipdata["answers"];
+            var question_index=skipdata["question_id"];
+            $('#question').html(question);
+            for (var i=0; i<skipanswers.length; i++) {
+                $('#panswer_'+i).html(skipanswers[i]["answer"]);
+                $('#answer_'+i).val(question_index+"#"+skipanswers[i]["index"]);
+            }
+            $('input[name=check_answer]').prop('checked',false);
+        }
+    });
+    clearInterval(timer);
+        countdownDuration = countdown;
+        startCountdown();
+   }
+ 
+    
+    // Function to start the countdown
+    function startCountdown() {
+        var display = document.getElementById('countdownInput');
+        timer = setInterval(function() {
+            var minutes = Math.floor(countdownDuration / 60);
+            var seconds = countdownDuration % 60;
+            display.textContent = minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+            countdownDuration--;
+            // Check if the countdown has finished
+            if (countdownDuration < 0) {
+                clearInterval(timer);
+                alert("time is up");
+            }
+        }, 1000);
+    }
+
+    window.onload = function() {
+        startCountdown();
+    };
     </script>
 </html>

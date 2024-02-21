@@ -10,7 +10,7 @@ if(isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true){
 } */
 
 
-$username="2023";
+$username=$_POST["customer_id"];
 $selectuser = $conn->query("SELECT * from customer where UID='$username'");
 if ($selectuser) {
     if ($selectuser->num_rows>0) {
