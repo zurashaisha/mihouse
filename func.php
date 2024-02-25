@@ -16,4 +16,11 @@ function game_state($customer_id) {
         return true;
       }
 }
+
+function get_record_data($customer_id) {
+  $all_questions=explode(".", $conn->query("SELECT question from customer where UID='$customer_id'")->fetch_assoc()["question"]);
+  $passed_questions = $conn->query("SELECT question_id from customer_success where UID='$customer_id' and skip_q is null")->fetch_all();
+  $skipped_questions=$conn->query("SELECT question_id from customer_success where UID='$customer_id' and skip_q is not null")->fetch_all();
+
+}
 ?>

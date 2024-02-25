@@ -129,7 +129,7 @@ body {
 
 </div>
 <div class="widget-wrap" id="end_game">
-    Game Over
+    
 </div>
 
 
@@ -190,11 +190,20 @@ body {
             data: {request: 'set_answer', answer_data:checked_answer, uid:uid, time:countdownDuration},
             dataType: 'json',
             success: function(data) {
-                if (data == "over") {
+                if (data["state"] == "over") {
                     game_begin.style.display = 'none';
                     game_end.style.display = 'block';
+                    $("#end_game").html(data["message"]);
+                    clearInterval(timer);
                 }
                 else {
+                    if (data["time"]) {
+                    var remaining_time=data["time"];
+                    countdownDuration = remaining_time;
+                }
+                else {
+                    countdownDuration = countdown;
+                }
                 var question=data["question"];
                 var answers=data["answers"];
                 var question_index=data["question_id"];
@@ -209,7 +218,6 @@ body {
             }
         });
         clearInterval(timer);
-        countdownDuration = countdown;
         startCountdown();
     }
    function skip_answer() {

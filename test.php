@@ -1,10 +1,17 @@
 <?php
-error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
 require "config.php";
-require "func.php";
+$numbers=array(24, 56, 71, 5, 1, 65, 80);
 echo "<pre>";
-$uid="2011";
-$score=$conn->query("SELECT UID from customer_success where UID='$uid' and correct_check='yes'")->num_rows;
-print_r($score);
-?>
 
+$key=71;
+for ($i=0; $i<=count($numbers); $i++) {
+    if ($numbers[$i] == $key) {
+        unset($numbers[$i]);
+
+    }
+}
+
+$numbers=array_values($numbers);
+array_push($numbers, $key);
+print_r($numbers);
+?>

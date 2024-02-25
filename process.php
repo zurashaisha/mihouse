@@ -78,9 +78,12 @@ if ($request == "set_answer") {
     }
     $all_questions=explode(".", $conn->query("SELECT question from customer where UID='$customer_id'")->fetch_assoc()["question"]);
     $passed_questions=$conn->query("SELECT question_id from customer_success where UID='$customer_id' and skip_q is null")->fetch_all();
-    if (count($all_questions) == count($passed_questions)) {
-        $score=$conn->query("SELECT UID from customer_success where UID='$uid' and correct_check='yes'")->num_rows;
-        echo json_encode("თქვენი შედეგია 10-დან ".$score." სწორი პასუხი");
+    $final_score=$conn->query("SELECT question_id from customer_success where UID='$customer_id' and correct_check is not null")->fetch_all();
+    if (count($all_questions) == count($final_score)) {
+        $score=$conn->query("SELECT UID from customer_success where UID='$customer_id' and correct_check='yes'")->num_rows;
+        $fresponse["state"] = "over";
+        $fresponse["message"] = "თქვენი შედეგია 10-დან ".$score." სწორი პასუხი";
+        echo json_encode($fresponse);
     }
     else {
     for ($p=0; $p<count($passed_questions); $p++) {
@@ -94,7 +97,10 @@ if ($request == "set_answer") {
       }
       $conn->query("UPDATE customer set current_question='$new_question' where UID='$customer_id'");
       #------------------ return next question--------------
-      
+      if ($conn->query("SELECT remaining_time from customer_success where question_id='$new_question'")->fetch_assoc()["remaining_time"]) {
+        $remaining_time=$conn->query("SELECT remaining_time from customer_success where question_id='$new_question'")->fetch_assoc()["remaining_time"];
+        $fresponse["time"]=$remaining_time;
+      }
       $question_data=$conn->query("SELECT * from questions where id=$new_question")->fetch_assoc()["question"];
       $fresponse["question"]=$question_data;
         $fresponse["question_id"]=$new_question;
@@ -126,7 +132,17 @@ if ($request == "skip_answer") {
             break;
         }
     }
-    
+    #---------------- insert skipped question at the bottom------------
+    for ($i=0; $i<=count($user_questions); $i++) {
+        if ($user_questions[$i] == $current_question) {
+            unset($user_questions[$i]);
+        }
+    }
+    array_push($user_questions, $current_question);
+    array_values($user_questions);
+    $user_questions=implode(".", $user_questions);
+    $conn->query("UPDATE customer set question='$user_questions' where UID='$uid'");
+    #-------------------------------------------------
     $conn->query("INSERT into customer_success (UID, question_id, skip_q, remaining_time) values('$uid', '$current_question', 'yes', '$time')");
     #$conn->query("UPDATE customer_success set question_id='$current_question', skip='yes', time_remaining='$time_remaining' where UID='$uid'");
     $conn->query("UPDATE customer set current_question='$next_question' where UID='$uid'");
